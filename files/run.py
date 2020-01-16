@@ -15,7 +15,7 @@ import tensorflow as tf
 data = get_data()
 
 # model
-model = Xnet(input_shape=(64, 64, 3), decoder_block_type='upsampling')
+model = Xnet(input_shape=(256, 256, 3), decoder_block_type='upsampling')
 # model.summary()
 model.compile(optimizer='Adam', loss='binary_crossentropy', metrics=['binary_accuracy'])
 

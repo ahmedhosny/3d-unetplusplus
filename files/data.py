@@ -6,8 +6,8 @@ def print_shape(obj, mode):
 
 def generate_data(size):
     _IMAGE_CHANNELS = 3
-    _IMAGE_SIZE_X = 64
-    _IMAGE_SIZE_Y = 64
+    _IMAGE_SIZE_X = 256
+    _IMAGE_SIZE_Y = 256
     return {
         "images": np.random.rand(size,_IMAGE_SIZE_X, _IMAGE_SIZE_Y, _IMAGE_CHANNELS), # 0 to 1
         "labels": np.random.randint(2, size=(size,_IMAGE_SIZE_X, _IMAGE_SIZE_Y, 1))
