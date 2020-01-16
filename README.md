@@ -25,9 +25,9 @@ rsync -rave "ssh -i R2-Q5 -p 16594" gpux@172.24.189.221:/home/gpux/ahmed_watersh
 # docker
 
 docker build -f dkr-model -t dkr-model .
-docker run -it -v $PWD/data:/data -v$PWD/files:/files -v /mnt:/mnt dkr-model /bin/bash (without port mapping when not using jupyter)
+docker run -it --gpus all -v\$PWD/files:/files -v /mnt:/mnt dkr-model /bin/bash
 
-docker run -it -v $PWD/data:/data -v$PWD/files:/files -v /mnt:/mnt -p 8886:8888 dkr-model /bin/bash
+docker run -it --gpus all -v\$PWD/files:/files -v /mnt:/mnt -p 8886:8888 dkr-model /bin/bash
 
 # to go into running container
 
