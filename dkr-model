@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip3 install --no-cache-dir future hypothesis \
     h5py==2.8.0 \
+    simpleITK==1.2.0 \
     matplotlib==2.2.3 \
     numpy==1.16.0 \
     scipy==1.1.0 \
