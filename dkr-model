@@ -1,5 +1,5 @@
 # Use an official ubuntu runtime as a parent image
-FROM nvidia/cuda:9.1-cudnn7-runtime-ubuntu16.04
+FROM nvidia/cuda:10.0-cudnn7-runtime-ubuntu16.04
 
 # Set the working directory to /files
 WORKDIR /files
