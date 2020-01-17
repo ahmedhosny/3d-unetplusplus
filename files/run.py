@@ -15,14 +15,14 @@ import tensorflow as tf
 data = get_data()
 
 # model
-model = Xnet(input_shape=(256, 256, 3), decoder_block_type='upsampling')
+model = Xnet(input_shape=(288, 320, 3), decoder_block_type='upsampling')
 # model.summary()
 model.compile(optimizer='Adam', loss='binary_crossentropy', metrics=['binary_accuracy'])
 
 # with tf.device('/gpu:0'):
-model.fit(x=data["train"]["images"], y=data["train"]["labels"], batch_size=2, epochs=10)
+model.fit(x=data["train"]["images"], y=data["train"]["labels"], batch_size=5, epochs=50)
 
-
+model.save('my_model.h5')
 
 
 #
