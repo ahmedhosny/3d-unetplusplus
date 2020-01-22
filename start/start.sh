@@ -30,4 +30,4 @@ gnome-terminal -e "$PWD/type_command.sh \"rsync --progress --stats --rsync-path=
 gnome-terminal -e "$PWD/type_command.sh \"rsync --progress --stats --rsync-path='sudo rsync' -rave 'ssh -i $path_to_key -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' ubuntu@$aws_ip:/ahmed/output $local_code_folder\""
 
 # terminal 5 (same terminal) - open local jupyter notebook in local docker
-docker run -it --gpus all -v $local_code_folder/files:/files -v $local_code_folder/output:/output -v /mnt:/mnt -p 8889:8888 dkr-model jupyter notebook --allow-root --ip=0.0.0.0
+docker run -it --gpus all -v $local_code_folder/files:/files -v $local_code_folder/output:/output -v /mnt/aertslab/DATA/Lung/RTOG_0617/0_processed:/data -p 8889:8888 dkr-model jupyter notebook --allow-root --ip=0.0.0.0
