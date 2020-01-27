@@ -1,4 +1,5 @@
 import json
+import math
 from model import Xnet
 from keras.models import model_from_json
 from data import get_data
@@ -8,31 +9,41 @@ from custom_funcs import dice_coefficient, dice_coefficient_loss
 from keras.utils import multi_gpu_model
 from model_callbacks import Cbk
 from keras.preprocessing.image import ImageDataGenerator
-
+from keras.callbacks import CSVLogger
 
 # from keras import backend as K
 # tf.logging.set_verbosity(tf.logging.ERROR)
 # config = tf.ConfigProto()
 # config.gpu_options.allow_growth = True
 
-RUN = 16
-
+RUN = 20
+AUG_SEED = 1
 BATCH_SIZE_PER_GPU = 4
 EPOCHS = 5
 GPUS = 8
 LABELS = ["lung", "heart", "cord", "esophagus", "ctv"]
 print("run # {}".format(RUN))
+
 # data
 data = get_data(LABELS)
 
-datagen = ImageDataGenerator(
-    rotation_range=8,
+# data augmentation
+datagen_args = dict(rotation_range=8,
     width_shift_range=20,
     height_shift_range=20,
     fill_mode='constant',
     cval=0.0)
-
-datagen.fit(data["train"]["images"])
+image_datagen = ImageDataGenerator(**datagen_args)
+image_generator = image_datagen.flow(
+            x=data["train"]["images"],
+            batch_size=BATCH_SIZE_PER_GPU*GPUS,
+            shuffle=True,
+            seed=AUG_SEED
+            # save_to_dir='/output/images',
+            # save_prefix='image',
+            # save_format='png'
+            )
+label_datagen = ImageDataGenerator(**datagen_args)
 
 # model
 original_model = Xnet(input_shape=(288, 320, 3), decoder_block_type='upsampling')
@@ -51,25 +62,28 @@ parallel_model.compile(optimizer='Adam',
 
 for label in LABELS:
     print (label)
+    # callbacks
     cbk = Cbk(original_model, label, RUN)
+    csv_logger = CSVLogger('/output/{}_{}.csv'.format(RUN, label), append=True, separator=',')
+    # label generator
+    label_generator = label_datagen.flow(
+                x=data["train"]["labels"][label],
+                batch_size=BATCH_SIZE_PER_GPU*GPUS,
+                shuffle=True,
+                seed=AUG_SEED
+                # save_to_dir='/output/labels',
+                # save_prefix='label',
+                # save_format='png'
+                )
+    train_generator = zip(image_generator, label_generator)
 
     parallel_model.fit_generator(
-        generator=datagen.flow(
-            x=data["train"]["images"],
-            y=data["train"]["labels"][label],
-            batch_size=BATCH_SIZE_PER_GPU*GPUS,
-            shuffle=True
-            # save_to_dir='/output',
-            # save_prefix='',
-            # save_format='png'
-        ),
-        # If none, will use len(generator) as number of steps
-        # len(data["train"]["images"]) / BATCH_SIZE_PER_GPU*GPUS
-        steps_per_epoch=None,
+        generator=train_generator,
+        steps_per_epoch=len(image_generator),
         epochs=EPOCHS,
         shuffle=True,
         validation_data=(data["tune"]["images"], data["tune"]["labels"][label]),
-        callbacks=[cbk]
+        callbacks=[cbk, csv_logger]
         )
 
 

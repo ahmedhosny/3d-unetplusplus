@@ -3,6 +3,7 @@ import pandas as pd
 import SimpleITK as sitk
 from collections import defaultdict
 
+
 df = pd.read_csv("/data/0_curation/rtog_final_curation_ctv.csv")
 
 label_paths = {
@@ -22,7 +23,7 @@ def print_shape(obj, mode):
         mode, "cord", obj["labels"]["cord"].shape,
         mode, "esophagus", obj["labels"]["esophagus"].shape,
         mode, "ctv", obj["labels"]["ctv"].shape)
-         )
+        )
 
 def get_arr(patient_id, label):
     path_to_nrrd = label_paths[label].format(patient_id)
@@ -85,8 +86,8 @@ def generate_data(labels, start, end):
 
 def get_data(labels):
     data = {
-        "train": generate_data(labels, 0, 330),
-        "tune": generate_data(labels, 330, 360),
+        "train": generate_data(labels, 0, 330), # 330
+        "tune": generate_data(labels, 330, 360), # 360
         # "test": generate_data(350,426)
     }
     print_shape(data["train"], "train")
