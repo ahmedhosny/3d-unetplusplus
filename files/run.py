@@ -1,6 +1,6 @@
 import json
 import math
-from model import Xnet
+from model_2d.model import Xnet
 from keras.models import model_from_json
 from data import get_data
 import tensorflow as tf
