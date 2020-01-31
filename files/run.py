@@ -16,16 +16,16 @@ from keras.callbacks import CSVLogger
 # config = tf.ConfigProto()
 # config.gpu_options.allow_growth = True
 
-RUN = 20
+RUN = 24
 AUG_SEED = 1
 BATCH_SIZE_PER_GPU = 4
 EPOCHS = 5
-GPUS = 8
-LABELS = ["lung", "heart", "cord", "esophagus", "ctv"]
-print("run # {}".format(RUN))
+GPUS = 7
+LABELS = ["ctv"]
+print("train run # {}".format(RUN))
 
 # data
-data = get_data(LABELS)
+data = get_data(LABELS, mode="train")
 
 # data augmentation
 datagen_args = dict(rotation_range=8,
