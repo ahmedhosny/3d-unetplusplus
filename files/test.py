@@ -2,9 +2,16 @@ from keras.models import load_model
 from data import get_data
 import tensorflow as tf
 import numpy as np
-from custom_funcs import dice_coefficient_test
+from custom_funcs import dice_coefficient_test, threshold
 import pandas as pd
-from common_utils import reduce_arr_dtype
+from common_utils import generate_sitk_obj_from_npy_array
+from keras.utils import multi_gpu_model
+from scipy import ndimage
+
+RUN = 19
+GPUS = 8
+BATCH_SIZE = int(160/GPUS)
+print("test run # {}".format(RUN))
 
 prediction_dict = [
 {"label": "lung",
@@ -25,16 +32,13 @@ prediction_dict = [
 ]
 patids = []
 
-
-RUN = 9
-print("test run # {}".format(RUN))
-
 data = get_data(mode="test")
 df = pd.DataFrame()
 
 # with tf.device('/gpu:7'):
 for index, obj in enumerate(prediction_dict):
-    model = load_model(obj["model"])
+    original_model = load_model(obj["model"])
+    parallel_model = multi_gpu_model(original_model, gpus=GPUS)
     print(obj["model"])
     for patient in data:
         patid = patient["patid"]
@@ -42,11 +46,22 @@ for index, obj in enumerate(prediction_dict):
             patids.append(patid)
         image = patient["image"]
         ground_truth = patient["labels"][obj["label"]]
-        prediction = model.predict(image)
-        np.save("/output/2d_multi_model/{}_{}.npy".format(patid, obj["label"]), reduce_arr_dtype(prediction, verbose=False))
+        prediction = parallel_model.predict(image, batch_size=BATCH_SIZE)
+        # post-processing
+        """
+        Will remove single dimension, threshold, fill holes, then add single dimension back.
+        """
+        original_shape = prediction.shape
+        prediction = np.squeeze(prediction)
+        prediction = threshold(prediction)
+        prediction = ndimage.binary_fill_holes(prediction).astype(int)
+        prediction = prediction.reshape(*original_shape)
+        # calculate dice and append to result
         dice = dice_coefficient_test(ground_truth, prediction)
         print("{} {}".format(patid, dice))
         obj["output"].append(dice)
+        # save nrrd
+        generate_sitk_obj_from_npy_array(patient["image_sitk_obj"], patient["image_arr"], prediction, "/output/2d_multi_model/{}_{}_prediction.nrrd".format(patid, obj["label"]))
     df[obj["label"]] = obj["output"]
 
 df["patids"] = patids
