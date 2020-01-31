@@ -148,8 +148,8 @@ def get_data(labels=[], mode="train"):
     """
     if mode=="train":
         data = {
-            "train": generate_train_tune_data(labels, 0, 330), # 330
-            "tune": generate_train_tune_data(labels, 330, 360) # 360
+            "train": generate_train_tune_data(labels, 0, 2), # 330
+            "tune": generate_train_tune_data(labels, 330, 331) # 360
         }
         print_shape(data["train"], "train")
         print_shape(data["tune"], "tune")

@@ -11,12 +11,12 @@ from model_callbacks import Cbk
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import CSVLogger
 
-RUN = 25
+RUN = 27
 AUG_SEED = 1
 BATCH_SIZE_PER_GPU = 4
-EPOCHS = 5
-GPUS = 7
-LABELS = ["lung", "heart", "cord", "esophagus", "ctv"]
+EPOCHS = 3
+GPUS = 8
+LABELS = ["heart", "cord", "esophagus", "ctv"]
 print("train run # {}".format(RUN))
 
 # data
