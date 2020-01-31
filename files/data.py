@@ -114,9 +114,13 @@ def generate_test_data(start, end):
     test_data = []
     # read dataframe
     for idx,pat in enumerate(df["patid"].tolist()[start:end]):
+        image_sitk_obj = sitk.ReadImage(paths["image"].format(pat))
+        image_arr = sitk.GetArrayFromImage(image_sitk_obj)
         test_data.append(
          {"patid": pat,
-          "image": format_3d_array(get_arr(pat, "image"), crop_3d, mode="image"),
+          "image_sitk_obj" : image_sitk_obj,
+          "image_arr": image_arr,
+          "image": format_3d_array(image_arr, crop_3d, mode="image"),
           "labels" : {
                 "lung": format_3d_array(get_arr(pat, "lung"), crop_3d),
                 "heart": format_3d_array(get_arr(pat, "heart"), crop_3d),
@@ -137,7 +141,9 @@ def get_data(labels=[], mode="train"):
         data["train"]["labels"]["lung"][i]
     For mode == "test":
         data[i]["patid"]
-        data[i][image]..[j] for slice
+        data[i]["image_sitk_obj"] # sitk object
+        data[i]["image_arr"]..[j] for slice # raw numpy array
+        data[i]["image"]..[j] for slice # formatted ready for model
         data[i]["labels"]["lung"]..[j] for slice
     """
     if mode=="train":
