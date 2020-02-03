@@ -60,7 +60,7 @@ def generate_train_tune_data(start, end):
     """
     images = []
     labels = []
-    label_order = ["lung", "heart", "cord", "esophagus", "ctv"]
+    label_order = ["ctv", "heart", "lung", "esophagus", "cord"]
     # read dataframe
     for idx,pat in enumerate(df["patid"].tolist()[start:end]):
         # read image and get array
@@ -148,23 +148,3 @@ def get_data(mode="train"):
         data = generate_test_data(360, 426) #426
         print ("test cases :: {}\ntest image shape :: {}\ntest label shape :: {}".format(len(data), data[0]["image"].shape, data[0]["labels"]["lung"].shape))
     return data
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# print(data["train"]["images"].shape)
