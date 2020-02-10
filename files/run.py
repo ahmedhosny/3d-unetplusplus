@@ -11,14 +11,10 @@ from model_callbacks import Cbk
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import CSVLogger
 
-# test pipeline for 2d single model
-# maybe use 1-2-3-4-5-6 for labels to avoid overlaps - change in datautils
-# 3d model
-
-RUN = 32
+RUN = 36
 AUG_SEED = 1
 BATCH_SIZE_PER_GPU = 4
-EPOCHS = 10
+EPOCHS = 7
 GPUS = 8
 print("train run # {}".format(RUN))
 
@@ -50,7 +46,7 @@ label_generator = label_datagen.flow(
 train_generator = zip(image_generator, label_generator)
 
 # model
-original_model = Xnet(input_shape=(288, 320, 3), decoder_block_type='upsampling', classes=5)
+original_model = Xnet(input_shape=(288, 320, 3), decoder_block_type='upsampling', classes=4)
 parallel_model = multi_gpu_model(original_model, gpus=GPUS)
 parallel_model.compile(optimizer='Adam',
     loss=dice_coefficient_loss,
