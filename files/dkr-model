@@ -25,7 +25,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
-
 # Install some python packages
 RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip3 install --no-cache-dir future hypothesis \
@@ -40,4 +39,5 @@ RUN pip3 install --no-cache-dir future hypothesis \
     jupyter==1.0.0 \
     pandas==0.23.4 \
     plotly==3.0.0 \
-    Pillow==5.1.0
+    Pillow==5.1.0 \
+    git+https://www.github.com/farizrahman4u/keras-contrib.git
