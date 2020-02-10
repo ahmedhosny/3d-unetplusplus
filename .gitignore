@@ -3,3 +3,4 @@ data
 files/__pycache__
 output
 *ipynb_checkpoints
+plots
