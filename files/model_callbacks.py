@@ -8,7 +8,7 @@ class Cbk(keras.callbacks.Callback):
         self.run = RUN
         self.losses = []
         self.val_losses = []
-        self.best_val_loss = 0
+        self.best_val_loss = 1
 
     def on_batch_end(self, batch, logs={}):
         self.losses.append(logs.get('loss'))
@@ -18,7 +18,7 @@ class Cbk(keras.callbacks.Callback):
         self.val_losses.append(val_loss)
         # save model
         if val_loss < self.best_val_loss:
-            self.model_to_save.save('/output/{}_epoch_{}_val-loss_{}.h5'.format(self.run, epoch, val_loss))
+            self.model_to_save.save('/output/{}.h5'.format(self.run))
             print('model saved.')
             self.best_val_loss = val_loss
 
