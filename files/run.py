@@ -5,67 +5,68 @@ import tensorflow as tf
 # from unet3d.data import write_data_to_file, open_data_file
 # from generator import get_training_and_validation_generators
 from model_3d.model import isensee2017_model
-from custom_funcs import weighted_dice_coefficient_loss, tversky_loss, focal_tversky, focal_tversky_inverse
+from custom_funcs import weighted_dice_coefficient_loss, tversky_loss, focal_tversky, focal_tversky_inverse, bbox_distance_loss
 import numpy as np
-# from train import load_old_model, train_model
-K.set_image_dim_ordering('th')
 from keras.optimizers import Adam
 from data import get_data
 from keras.utils import multi_gpu_model
 from model_callbacks import Cbk
 from keras.callbacks import CSVLogger
+K.set_image_dim_ordering('th')
+
+# 45 - 0 - ctv
+# 46 - 1 - heart
+# 47 - 2 - lung
+# 48 - 3 - esophagus
+# 49 - 4 - cord
 
 
-losses = [weighted_dice_coefficient_loss, tversky_loss, focal_tversky, focal_tversky_inverse]
 
-for index, loss_func in enumerate(losses):
+RUN = 54
+AUG_SEED = 1
+BATCH_SIZE_PER_GPU = 3
+EPOCHS = 40
+GPUS = 8
+print("train run # {}".format(RUN))
 
-    RUN = 40 + index + 1
-    AUG_SEED = 1
-    BATCH_SIZE_PER_GPU = 4
-    EPOCHS = 20
-    GPUS = 8
-    print("train run # {}".format(RUN))
+# get data
+data = get_data(mode="train")
 
-    # get data
-    data = get_data(mode="train")
+config = dict()
+# original 80, 100, 108 - adjusted to fit 80, 96, 96
+config["image_shape"] = (80, 96, 96)
+config["labels"] = [1]  # the label numbers on the input image
+config["n_labels"] = len(config["labels"])
+config["n_base_filters"] = 16
+config["input_shape"] = tuple([1] + list(config["image_shape"]))
+config["initial_learning_rate"] = 5e-4
 
+# model
+# with tf.device('/cpu:0'):
+original_model = isensee2017_model(input_shape=config["input_shape"], n_labels=config["n_labels"],
+initial_learning_rate=config["initial_learning_rate"],
+n_base_filters=config["n_base_filters"])
+# print(original_model.summary(line_length=150))
 
-    config = dict()
-    # original 80, 100, 108 - adjusted to fit 80, 96, 96
-    config["image_shape"] = (80, 96, 96)
-    config["labels"] = [1]  # the label numbers on the input image
-    config["n_labels"] = len(config["labels"])
-    config["n_base_filters"] = 16
-    config["input_shape"] = tuple([1] + list(config["image_shape"]))
-    config["initial_learning_rate"] = 5e-4
+# parallel model
+parallel_model = multi_gpu_model(original_model, gpus=GPUS)
+parallel_model.compile(optimizer=Adam(lr=config["initial_learning_rate"]), loss=bbox_distance_loss)
 
-    # model
-    # with tf.device('/cpu:0'):
-    original_model = isensee2017_model(input_shape=config["input_shape"], n_labels=config["n_labels"],
-    initial_learning_rate=config["initial_learning_rate"],
-    n_base_filters=config["n_base_filters"])
-    # print(original_model.summary(line_length=150))
+# callbacks
+cbk = Cbk(original_model, RUN)
+csv_logger = CSVLogger('/output/{}.csv'.format(RUN), append=True, separator=',')
 
-    # parallel model
-    parallel_model = multi_gpu_model(original_model, gpus=GPUS)
-    parallel_model.compile(optimizer=Adam(lr=config["initial_learning_rate"]), loss=loss_func)
-
-    # callbacks
-    cbk = Cbk(original_model, RUN)
-    csv_logger = CSVLogger('/output/{}.csv'.format(RUN), append=True, separator=',')
-
-    # fit
-    parallel_model.fit(
-    x=data["train"]["images"],
-    y=data["train"]["labels"],
-    batch_size=BATCH_SIZE_PER_GPU*GPUS,
-     # steps_per_epoch=None,
-     epochs=EPOCHS,
-     shuffle=True,
-     validation_data=(data["tune"]["images"], data["tune"]["labels"]),
-     callbacks=[cbk, csv_logger]
-     )
+# fit
+parallel_model.fit(
+x=data["train"]["images"],
+y=data["train"]["labels"],
+batch_size=BATCH_SIZE_PER_GPU*GPUS,
+ # steps_per_epoch=None,
+ epochs=EPOCHS,
+ shuffle=True,
+ validation_data=(data["tune"]["images"], data["tune"]["labels"]),
+ callbacks=[cbk, csv_logger]
+ )
 
 
 

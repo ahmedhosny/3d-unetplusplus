@@ -1,3 +1,4 @@
+import os
 from keras.models import load_model
 from data import get_data
 import tensorflow as tf
@@ -7,23 +8,91 @@ import pandas as pd
 from common_utils import generate_sitk_obj_from_npy_array
 from keras.utils import multi_gpu_model
 from scipy import ndimage
+from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 
-RUN = 22
+RUN = 51
+NAME = "gtv-dice"
 GPUS = 8
-BATCH_SIZE = int(160/GPUS)
+BATCH_SIZE = 4
+SAVE_PREDICTION = True
+SAVE_CSV = True
 print("test run # {}".format(RUN))
 
-model = "/output/36_epoch_3_val-loss_-0.2641610581429618.h5"
-# model = "/output/34_epoch_9_val-loss_-0.6120161452185066.h5"
+# will save csv or predictions inside here
+dir_name = "/output/{}_{}".format(RUN, NAME)
+if not os.path.exists(dir_name):
+    os.mkdir(dir_name)
+    print("directory {} created".format(dir_name))
 
-prediction_dict = [
-{"label": "overall", "output": []},
-{"label": "ctv", "output": []},
-{"label": "heart", "output": []},
-{"label": "lung", "output": []},
-{"label": "esophagus", "output": []},
-{"label": "cord", "output": []}
-]
+# initiate vars
+patids = []
+df = pd.DataFrame()
+
+# get data
+data = get_data(mode="test", structure=0)
+
+# load model
+model = "/output/{}.h5".format(RUN)
+original_model = load_model(model, custom_objects={'InstanceNormalization': InstanceNormalization})
+parallel_model = multi_gpu_model(original_model, gpus=GPUS)
+
+# dice list
+dice_list = []
+for patient in data:
+    patid = patient["patid"]
+    patids.append(patid)
+    image = patient["image"]
+    ground_truth = patient["label"]
+    prediction = parallel_model.predict(image.reshape(1, *image.shape))
+    if SAVE_PREDICTION:
+        # need to thrshold
+        generate_sitk_obj_from_npy_array(
+        patient["image_sitk_obj"],
+        patient["image_arr"],
+        np.squeeze(prediction),
+        os.path.join(dir_name, "{}_prediction.nrrd".format(patid))
+        )
+    # calculate dice and append
+    dice = dice_coefficient_test(np.squeeze(ground_truth), np.squeeze(prediction))
+    print("{} {}".format(patid, dice))
+    dice_list.append(dice)
+
+# populate df
+if SAVE_CSV:
+    df["patids"] = patids
+    df["dice"] = dice_list
+    df.to_csv("{}/{}_{}.csv".format(dir_name, RUN, NAME))
+
+
+
+
+
+
+
+
+
+
+
+    #
+    # data[i]["patid"]
+    # data[i]["image_sitk_obj"] returns sitk object
+    # data[i]["image_arr"] returns raw numpy array
+    # data[i]["image"] returns single 3d 1-channel array
+    # data[i]["label"] returns single 3d 1-channel array
+
+
+#
+# model = "/output/36_epoch_3_val-loss_-0.2641610581429618.h5"
+# # model = "/output/34_epoch_9_val-loss_-0.6120161452185066.h5"
+#
+# # prediction_dict = [
+# # {"label": "overall", "output": []},
+# # {"label": "ctv", "output": []},
+# # {"label": "heart", "output": []},
+# # {"label": "lung", "output": []},
+# {"label": "esophagus", "output": []},
+# {"label": "cord", "output": []}
+# ]
 #
 # {"label": "heart",
 # "model": "/output/21_label_heart_epoch_2_val-loss_-0.7868379491494388.h5",
@@ -38,26 +107,29 @@ prediction_dict = [
 # "model": "/output/24_label_ctv_epoch_3_val-loss_-0.7424983113985474.h5",
 # "output": []}
 # ]
-patids = []
+# patids = []
+#
+# data = get_data(mode="test")
+# df = pd.DataFrame()
+#
+# # with tf.device('/gpu:7'):
+# # for index, obj in enumerate(prediction_dict):
+#
+# original_model = load_model(model)
+# parallel_model = multi_gpu_model(original_model, gpus=GPUS)
+#
+# for index, patient in enumerate(data):
+#     patid = patient["patid"]
+#     if index == 0:
+#         patids.append(patid)
+#     image = patient["image"]
+#     ground_truth = patient["label"]
+#     prediction = parallel_model.predict(image, batch_size=BATCH_SIZE)
+#     print (prediction.shape)
+#     dice = dice_coefficient_test(ground_truth, prediction)
+#     print("{} {}".format(patid, dice))
 
-data = get_data(mode="test")
-df = pd.DataFrame()
 
-# with tf.device('/gpu:7'):
-# for index, obj in enumerate(prediction_dict):
-
-original_model = load_model(model)
-parallel_model = multi_gpu_model(original_model, gpus=GPUS)
-
-for index, patient in enumerate(data):
-    patid = patient["patid"]
-    if index == 0:
-        patids.append(patid)
-    image = patient["image"]
-    ground_truth = patient["label"]
-    prediction = parallel_model.predict(image, batch_size=BATCH_SIZE)
-    np.save("/output/36_test_prediction_{}.npy".format(patid), prediction)
-    print (prediction.shape)
 #     #########
 #     # post-processing
 #     """
