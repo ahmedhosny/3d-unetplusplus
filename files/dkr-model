@@ -32,6 +32,7 @@ RUN pip3 install --no-cache-dir future hypothesis \
     simpleITK==1.2.0 \
     matplotlib==2.2.3 \
     numpy==1.16.0 \
+    scikit-image==0.14.2 \
     scipy==1.1.0 \
     tensorflow==1.13.1 \
     tensorflow-gpu==1.13.1 \
