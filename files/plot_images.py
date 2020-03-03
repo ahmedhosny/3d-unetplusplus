@@ -9,7 +9,7 @@ from skimage import measure
 import sys
 import numpy as np
 import os
-import common_utils
+import utils
 
 # mask_cmap = matplotlib.cm.get_cmap('Set1')
 mask_cmap = [(57/255, 255/255, 20/255, 1.0), (1, 1, 1, 1.0)]
@@ -125,8 +125,6 @@ def plot_legend(ax, mask_list_names):
                     fontsize=20, ha='center', va='center', annotation_clip=False)
 
 
-
-
 def plot_images(dataset, patient_id, data_arr, gt_arr, pred_arr, output_dir, bbox_flag, bbox_metrics, dice):
     """
     Plots 15 different views of a given patient imaging data.
@@ -150,13 +148,13 @@ def plot_images(dataset, patient_id, data_arr, gt_arr, pred_arr, output_dir, bbo
     try:
         gt_bbox_metrics = bbox_metrics["ground_truth_bbox_metrics"]
         pred_bbox_metrics = bbox_metrics["prediction_bbox_metrics"]
-        pred_arr = common_utils.threshold(pred_arr)
+        pred_arr = utils.threshold(pred_arr)
         mask_arr_list = [gt_arr, pred_arr]
         mask_list_names = ["gt", "pred"]
         # bbox and centroid will be calculated based on gt_arr only
-        # combined = common_utils.combine_masks(mask_arr_list)
-        gt_bbox = common_utils.get_bbox(gt_arr)
-        pred_bbox = common_utils.get_bbox(pred_arr)
+        # combined = utils.combine_masks(mask_arr_list)
+        gt_bbox = utils.get_bbox(gt_arr)
+        pred_bbox = utils.get_bbox(pred_arr)
         # decided to use geometric center as opposed to center of mass to show the actual center of the bounding box - although still called com, it is the geometric center
         # com = ndimage.measurements.center_of_mass(combined)
         # print(com)

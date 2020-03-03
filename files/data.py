@@ -1,129 +1,142 @@
 import numpy as np
 import pandas as pd
 import SimpleITK as sitk
-from collections import defaultdict
 
-df = pd.read_csv("/data/0_curation/rtog_final_curation_gtv.csv")
-print (df.shape)
-crop_3d = [0,80,2,98,6,102] # 80, 100, 108
+df = pd.read_csv("/mnt/aertslab/USERS/Ahmed/0_FINAL_SEGMENTAION_DATA/data.csv")
+print("data.csv shape :: ", df.shape)
 
-paths = {
-    "image": "/data/14_image_interpolated_resized_rescaled/rtog_{}_image_interpolated_resized_rescaled_xx.nrrd",
-    "label": "/data/20_gtv_interpolated_resized_rescaled/rtog_{}_gtv_interpolated_resized_rescaled_xx.nrrd"
+data_split = {
+    "train": df[(df["dataset"]=="maastro")][:330], 
+    "tune" : df[(df["dataset"]=="maastro")][330:360],
+    "test" : df[(df["dataset"]=="maastro")][360:],
 }
+
+version = "interpolated_resized_rescaled"
 
 def print_shape(obj, mode):
     print ("{} image shape :: {} \n{} label shape :: {}".format(
         mode, obj["images"].shape,
         mode, obj["labels"].shape))
 
-def get_arr(patient_id, key):
+def get_arr(path_to_nrrd, mode, model_input_size):
     """
     Reads a nrrd file and spits out a numpy array.
+    path_to_nrrd: path_to_nrrd
+    type: image or label
     """
-    path_to_nrrd = paths[key].format(patient_id)
-    image = sitk.ReadImage(path_to_nrrd)
-    return sitk.GetArrayFromImage(image)
+    sitk_image = sitk.ReadImage(path_to_nrrd)
+    arr = sitk.GetArrayFromImage(sitk_image)
+    if mode == "tune":
+        arr = format_arr(arr, model_input_size)
+    return arr
 
+def crop_arr(arr, model_input_size):
+    start_z = arr.shape[0]//2 - model_input_size[0]//2
+    start_y = arr.shape[1]//2 - model_input_size[1]//2
+    start_x = arr.shape[2]//2 - model_input_size[2]//2
+    #
+    arr = arr[start_z:start_z+model_input_size[0],
+              start_y:start_y+model_input_size[1],
+              start_x:start_x+model_input_size[2]]
+    return arr
 
-def format_3d_array(arr, crop_3d, structure, mode="label"):
+def format_arr(arr, model_input_size):
     """
-    Crops, reshapes, and creates a RGB image (or binary label) of a 3D array.
-    crop_3d [start_z, end_z, start_y, end_y, start_x, end_x]
+    Used for test mode. Crops and reshapes array.
+    Also remaps image values.
     """
-    if mode == "image":
-        arr = np.interp(arr,[-1024,3071],[0,1])
-        arr = arr[crop_3d[0]:crop_3d[1], crop_3d[2]:crop_3d[3], crop_3d[4]:crop_3d[5]]
-        arr = arr.reshape(1, *arr.shape)
-        return arr
-    elif mode == "label":
-        # change channel here
-        arr = arr[crop_3d[0]:crop_3d[1], crop_3d[2]:crop_3d[3], crop_3d[4]:crop_3d[5]] # , structure
-        arr = arr.reshape(1, *arr.shape)
-        return arr
+    arr = crop_arr(arr, model_input_size)
+    arr = arr.reshape(1, *arr.shape)
+    return arr
 
-def generate_train_tune_data(start, end, structure):
+def generate_train_tune_data(data_split, mode, model_input_size):
     """
-    For 3d models. (ignores patients)
+    Used for training and tuning only.
+    data_split: dictionary of train, tune, and test split.
+    mode: train, tune, or test
     """
     images = []
     labels = []
-    # read dataframe
-    for idx, pat in enumerate(df["patid"].tolist()[start:end]):
-        # read image and label
-        arr_image = get_arr(pat, "image")
-        arr_label = get_arr(pat, "label")
-        # format
-        arr_image = format_3d_array(arr_image, crop_3d, structure, mode="image")
-        arr_label = format_3d_array(arr_label, crop_3d, structure)
+    for idx, patient in data_split[mode].iterrows():
+        # get arr
+        arr_image = get_arr(patient["image_"+version], mode, model_input_size)
+        arr_image = np.interp(arr_image,[-1024,3071],[0,1])
+        arr_label = get_arr(patient["label_"+version], mode, model_input_size)
         # append to list
         images.append(arr_image)
         labels.append(arr_label)
-        print ("{}_{}".format(idx, pat))
-
+        print ("{}_{}".format(idx, patient["patient_id"]))
+    print("-------------")
     return {
             "images": np.array(images),
             "labels": np.array(labels)
            }
 
-def generate_test_data(start, end, structure):
+def generate_test_data(data_split, model_input_size):
     """
-    For 2d slice-by-slice models (will bundle slices per patient).
-    Unlike generate_train_tune_data, this will return all labels.
+    Used for testing only. The image sitk object info is needed during test time. To avoid reading the image nrrd twice, it is read here.
     """
-    test_data = []
-    # read dataframe
-    for idx, pat in enumerate(df["patid"].tolist()[start:end]):
-        # read image and label
-        image_sitk_obj = sitk.ReadImage(paths["image"].format(pat))
-        image = sitk.GetArrayFromImage(image_sitk_obj)
-        label = get_arr(pat, "label")
-        test_data.append(
-         {"patid": pat,
-          "image_sitk_obj" : image_sitk_obj,
-          "image_arr": image,
-          "label_arr": label,
-          "image": format_3d_array(image, crop_3d, structure, mode="image"),
-          "label" : format_3d_array(label, crop_3d, structure)
+    test = []
+    for idx, patient in data_split["test"].iterrows():
+        # get image
+        image_sitk_obj = sitk.ReadImage(patient["image_"+version])
+        arr_image = sitk.GetArrayFromImage(image_sitk_obj)
+        arr_image_interp = np.interp(arr_image,[-1024,3071],[0,1])
+        # get label
+        label_sitk_obj = sitk.ReadImage(patient["label_"+version])
+        arr_label = sitk.GetArrayFromImage(image_sitk_obj)
+        # append to list
+        test.append(
+         {"patient_id": patient["patient_id"],
+          "dataset": patient["dataset"],
+          "image_sitk_obj": image_sitk_obj,
+          "image": format_arr(arr_image_interp, model_input_size),
+          "label_sitk_obj": label_sitk_obj,
+          "label": format_arr(arr_label, model_input_size),
           }
         )
-        print ("{}_{}".format(idx, pat))
-    return test_data
+        print ("{}_{}".format(idx, patient["patient_id"]))
+    return test
 
-def get_data(mode="train", structure=0):
+def get_data(mode, model_input_size):
     """
-    For mode == "train":
-        data["train"]["images"][i] returns single 3d 1-channel array
-        data["train"]["labels"][i] returns single 3d 1-channel array
-        data["tune"]["images"][i] returns single 3d 1-channel array
-        data["tune"]["labels"][i] returns single 3d 1-channel array
-    For mode == "test":
-        data[i]["patid"]
-        data[i]["image_sitk_obj"] returns sitk object
-        data[i]["image_arr"] returns raw numpy array
-        data[i]["label_arr"] returns raw numpy array with 5 channels
-        data[i]["image"] returns single 3d 1-channel array
-        data[i]["label"] returns single 3d 1-channel array
+    to call:
+        model_input_size = (80, 96, 96)
+        data_train_tune = get_data("train_tune", model_input_size)
+        data_test = get_data("test", model_input_size)
+
+    for access:
+        data_train_tune["train"]["images"][patient, axial_slice, :, :]
+        data_train_tune["train"]["labels"][patient, axial_slice, :, :]
+        data_train_tune["tune"]["images"][patient, 0, axial_slice, :, :]
+        data_train_tune["tune"]["labels"][patient, 0, axial_slice, :, :]
+        data_test[patient]["image"][0, axial_slice, :, :]
+        data_test[patient]["label"][0, axial_slice, :, :]
+
+    intended behaviour:
+        train image shape :: (L, 84, 108, 108)
+        train label shape :: (L, 84, 108, 108)
+        tune image shape :: (L, 1, 80, 96, 96)
+        tune label shape :: (L, 1, 80, 96, 96)
+        test cases :: 3
+        test image shape :: (1, 80, 96, 96)
+        test label shape :: (1, 80, 96, 96)
+
+    for mode == "test", objects are returned:
+        data[i]["patient_id"]
+        data[i]["image_sitk_obj"] returns sitk object of image
+        data[i]["image"] returns 3d 1-channel array
+        data[i]["label_sitk_obj"] returns sitk object of label
+        data[i]["label"] returns 3d 1-channel array
     """
-    if mode=="train":
+    if mode=="train_tune":
         data = {
-            "train": generate_train_tune_data(0, 250, structure),
-            "tune": generate_train_tune_data(250, 275, structure)
+            "train": generate_train_tune_data(data_split, "train", model_input_size),
+            "tune": generate_train_tune_data(data_split, "tune", model_input_size)
         }
         print_shape(data["train"], "train")
         print_shape(data["tune"], "tune")
     elif mode=="test":
-        data = generate_test_data(275, 325, structure)
+        data = generate_test_data(data_split, model_input_size)
         print ("test cases :: {}\ntest image shape :: {}\ntest label shape :: {}".format(len(data), data[0]["image"].shape, data[0]["label"].shape))
     return data
-
-
-# ctv
-# 0-330
-# 330-360
-# 360-426
-
-# gtv
-# 0-250
-# 250-275
-# 275-325

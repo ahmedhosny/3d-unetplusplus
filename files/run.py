@@ -14,31 +14,32 @@ from model_callbacks import Cbk
 from keras.callbacks import CSVLogger
 K.set_image_dim_ordering('th')
 
+# 45 - 0 - ctv
+# 46 - 1 - heart
+# 47 - 2 - lung
+# 48 - 3 - esophagus
+# 49 - 4 - cord
+
+
+
+RUN = 54
+AUG_SEED = 1
+BATCH_SIZE_PER_GPU = 3
+EPOCHS = 40
+GPUS = 8
+print("train run # {}".format(RUN))
+
+# get data
+data = get_data(mode="train")
+
 config = dict()
-config["run"] = 55
-config["batch_size_per_gpu"] = 3
-config["n_gpus"] = 8
-config["epochs"] = 40
+# original 80, 100, 108 - adjusted to fit 80, 96, 96
 config["image_shape"] = (80, 96, 96)
-config["labels"] = [1]
+config["labels"] = [1]  # the label numbers on the input image
 config["n_labels"] = len(config["labels"])
 config["n_base_filters"] = 16
 config["input_shape"] = tuple([1] + list(config["image_shape"]))
 config["initial_learning_rate"] = 5e-4
-# AUGMENTATION
-config["augment"] = True
-config["rotation_angle_range"] = 10
-config["blur_multiplier"] = 2.0
-config["blur_random_range"] = 0.6 # 60% + or -
-#
-print("train run # {}".format(config["run"]))
-
-
-# get data
-data = get_data("train_tune", model_input_size)
-
-
-
 
 # model
 # with tf.device('/cpu:0'):
@@ -47,26 +48,21 @@ initial_learning_rate=config["initial_learning_rate"],
 n_base_filters=config["n_base_filters"])
 # print(original_model.summary(line_length=150))
 
-
-
-
-
-
 # parallel model
-parallel_model = multi_gpu_model(original_model, gpus=config["n_gpus"])
-parallel_model.compile(optimizer=Adam(lr=config["initial_learning_rate"]), loss=weighted_dice_coefficient_loss)
+parallel_model = multi_gpu_model(original_model, gpus=GPUS)
+parallel_model.compile(optimizer=Adam(lr=config["initial_learning_rate"]), loss=bbox_distance_loss)
 
 # callbacks
-cbk = Cbk(original_model, config["run"])
-csv_logger = CSVLogger('/output/{}.csv'.format(config["run"]), append=True, separator=',')
+cbk = Cbk(original_model, RUN)
+csv_logger = CSVLogger('/output/{}.csv'.format(RUN), append=True, separator=',')
 
 # fit
 parallel_model.fit(
 x=data["train"]["images"],
 y=data["train"]["labels"],
-batch_size=config["batch_size_per_gpu"]*config["n_gpus"],
+batch_size=BATCH_SIZE_PER_GPU*GPUS,
  # steps_per_epoch=None,
- epochs=config["epochs"],
+ epochs=EPOCHS,
  shuffle=True,
  validation_data=(data["tune"]["images"], data["tune"]["labels"]),
  callbacks=[cbk, csv_logger]
@@ -76,16 +72,6 @@ batch_size=config["batch_size_per_gpu"]*config["n_gpus"],
 
 
 
-
-#
-gen = generator.generator(data["train"]["images"],
-data["train"]["labels"],
-config["batch_size_per_gpu"]*config["n_gpus"],
-config["rotation_angle_range"],
-config["image_shape"],
-config["blur_multiplier"],
-config["blur_random_range"],
-config["augment"])
 
 
 

@@ -73,7 +73,17 @@ only cord has ones
 
 ---
 
+# 55 gtv maastro without generator, weighted_dice_coefficient_loss
+
+# 56 gtv maastro with crop/rotate, weighted_dice_coefficient_loss
+
+# 57 gtv maastro with crop/rotate/blur, weighted_dice_coefficient_loss
+
 ---
+
+#60-89 different loss functions at 3 lrs
+
+#
 
 ## test
 

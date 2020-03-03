@@ -113,7 +113,6 @@ def isensee2017_model(input_shape=(4, 128, 128, 128), n_base_filters=16, depth=5
         if level_number > 0:
             output_layer = UpSampling3D(size=(2, 2, 2))(output_layer)
 
-    print(output_layer)
     activation_block = Activation(activation_name)(output_layer)
 
     model = Model(inputs=inputs, outputs=activation_block)
