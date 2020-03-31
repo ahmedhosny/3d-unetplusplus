@@ -57,7 +57,7 @@ def segmentation_score(gt, pr, spacing):
     """
         gt: numpy array of ground truth
         pr: numpy array of prediction
-        spacing: list of z, y, x spacing in mm
+        spacing: list of z,y,x spacing in mm (from util func)
     """
     voxel_volume = np.prod(spacing)
     TP = np.logical_and(gt, pr).sum() * voxel_volume
@@ -81,7 +81,7 @@ def segmentation_score_2(gt, pr, spacing):
     """
         gt: numpy array of ground truth
         pr: numpy array of prediction
-        spacing: list of z, y, x spacing in mm
+        spacing: list of z,y,x spacing in mm (from util func)
     """
     voxel_volume = np.prod(spacing)
     TP = np.logical_and(gt, pr).sum() * voxel_volume
@@ -103,7 +103,7 @@ def surface_dice(gt, pr, spacing, hausdorff_percent, overlap_tolerance, surface_
     """
         gt: numpy array of ground truth
         pr: numpy array of prediction
-        spacing: list of z, y, x spacing in mm
+        spacing: list of z,y,x spacing in mm (from util func)
         hausdorff_percent: percentile at which to calculate the Hausdorff distance (which is usually calculated as the maximum distance)
         overlap_tolerance: float (mm) of what is considered as "overlap"
         surface_dice_tolerance: float (mm) same as overlap tolerance but used for surface dice calculation

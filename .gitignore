@@ -1,6 +1,8 @@
 archive
 data
+start/pass
 files/__pycache__
 output
+experiments
 *ipynb_checkpoints
 plots

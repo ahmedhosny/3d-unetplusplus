@@ -237,46 +237,6 @@ def crop_and_pad(array_to_crop_from, shape_to_crop_to, center, pad_value):
 
     return array_to_crop_from_padded[Z_start:Z_end, Y_start:Y_end, X_start:X_end]
 
-# DELETE?
-# def save_candidate_roi_both(bbox_metrics, spacing, path_to_image_to_crop, path_to_label_to_crop, crop_shape, output_path_image, output_path_label):
-#
-#     ## PROBLEM!! using prediction center, but cropping gt label?!
-#     # CROP image and label based on previous pred center, can then compare label and pred
-#     """
-#         bbox_metrics (dict) dict of metrics calculated between gt and pred
-#         spacing (list) "old" spacing of arrays used in localization step i.e.(6,3,3) z,y,x
-#         path_to_image_to_crop (str) path to image to be cropped
-#         path_to_label_to_crop (str) path to label to be cropped
-#         crop_shape (list) shape to save cropped image and nrrd (larger than input to segmentation model) (z,y,x)
-#         output_path_image (str) path to save image nrrd
-#         output_path_label (str) path to save label nrrd
-#     """
-#
-#     # get image and label to be cropped + new spacing
-#     image_obj, image_arr, image_spacing = get_arr_from_nrrd(path_to_image_to_crop, "image")
-#     label_obj, label_arr, label_spacing = get_arr_from_nrrd(path_to_label_to_crop, "label")
-#     assert image_spacing==label_spacing, "image and label spacing do not match!"
-#
-#     # get centers from predictions in localization step
-#     Z = int(bbox_metrics["prediction_bbox_metrics"]["Z"]["center"])
-#     Y = int(bbox_metrics["prediction_bbox_metrics"]["Y"]["center"])
-#     X = int(bbox_metrics["prediction_bbox_metrics"]["X"]["center"])
-#
-#     # get new centers based on old and new spacing
-#     old_spacing = spacing
-#     new_spacing = [int(x) for x in image_spacing] # or label_spacing
-#     Z = (Z * old_spacing[0]) // new_spacing[0]
-#     Y = (Y * old_spacing[1]) // new_spacing[1]
-#     X = (X * old_spacing[2]) // new_spacing[2]
-#
-#     # crop and pad
-#     image_arr_crop = crop_and_pad(image_arr, crop_shape, (Z, Y, X), -1024)
-#     label_arr_crop = crop_and_pad(label_arr, crop_shape, (Z, Y, X), 0)
-#
-#     # save
-#     image_crop_sitk = generate_sitk_obj_from_npy_array(image_obj, image_arr_crop, resize=False, output_dir=output_path_image)
-#     label_crop_sitk = generate_sitk_obj_from_npy_array(label_obj, label_arr_crop, resize=False, output_dir=output_path_label)
-
 # USING THIS
 def save_candidate_roi(bbox_metrics, spacing, path_to_image_to_crop, crop_shape, output_path_image):
 
@@ -318,3 +278,83 @@ def get_lr_metric(optimizer):
     def lr(y_true, y_pred):
         return optimizer.lr
     return lr
+
+def multi_prediction(image, original_model, image_shape):
+    """
+    image: From data that has not been cropped or reshaped.
+    original_model: model to run inference
+    image_shape: tuple of shape to be fed into model (z, y, x)
+    """
+    org = image
+    combined_label = np.zeros(org.shape)
+    #
+    z_diff = org.shape[0] - image_shape[0]
+    y_diff = org.shape[1] - image_shape[1]
+    x_diff = org.shape[2] - image_shape[2]
+
+    offsets = [
+        # counter clockwise on top
+        {"z":0,
+         "y":0,
+         "x":0
+        },
+        {"z":0,
+         "y":y_diff,
+         "x":0
+        },
+        {"z":0,
+         "y":y_diff,
+         "x":x_diff
+        },
+        {"z":0,
+         "y":0,
+         "x":x_diff
+        },
+        # central
+        {"z":z_diff//2,
+         "y":y_diff//2,
+         "x":x_diff//2
+        },
+        # counter clockwise on bottom
+        {"z":z_diff,
+         "y":0,
+         "x":0
+        },
+        {"z":z_diff,
+         "y":y_diff,
+         "x":0
+        },
+        {"z":z_diff,
+         "y":y_diff,
+         "x":x_diff
+        },
+        {"z":z_diff,
+         "y":0,
+         "x":x_diff
+        }
+    ]
+
+    for offset in offsets:
+        Z = offset["z"]
+        Y = offset["y"]
+        X = offset["x"]
+        crop_to_predict_on = org[Z:(Z+image_shape[0]),
+                                 Y:(Y+image_shape[1]),
+                                 X:(X+image_shape[2])]
+        # run prediction
+        pred = original_model.predict( crop_to_predict_on.reshape(1,1,*crop_to_predict_on.shape))
+
+        pred = np.squeeze(pred)
+
+        # should happen elsewhere for efficiency
+        assert pred.shape == image_shape
+
+        combined_label[Z:(Z+image_shape[0]),
+                       Y:(Y+image_shape[1]),
+                       X:(X+image_shape[2])] += pred
+
+    # # divide and return
+    # # thresholding happens in test.py
+    # combined_label /= 9
+
+    return combined_label

@@ -83,7 +83,29 @@ only cord has ones
 
 #60-89 different loss functions at 3 lrs
 
-#
+---
+
+# testst for LR schedule
+
+# 103 - focal-tversky-loss-0.0005
+
+# 105 - focal-tversky-loss-lr (bad) (0.5, 5)
+
+# 106 - focal-tversky-loss-lr-tight (0.8, 20)
+
+# 107 - focal-tversky-loss-lr-tight-2 (0.8, 12)
+
+# 108 - focal-tversky-loss-lr-tight-2-affine (0.8, 12) adds affine trans
+
+# 109 - focal-tversky-loss-0.0005-augment (like 103 with affine and elastic, and more epochs) - multi(average) and single
+
+# 110 - like 109 but with train on harvard-rt only - multi(average) and single
+
+# 111 - like 109 but with train on maastro only - multi(average) and single (only did single for now, need plotting)
+
+# 112, take model from 111 and train all layes on harvard-rt (only did single for now)
+
+---
 
 ## test
 

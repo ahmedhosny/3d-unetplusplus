@@ -56,6 +56,9 @@ def focal_tversky_loss(y_true,y_pred):
     return K.pow((1-pt_1), gamma)
 
 # cross entropy
+def bce_loss(y_true, y_pred):
+    return binary_crossentropy(y_true, y_pred)
+
 def wce(beta=0.5):
     # To decrease the number of false negatives, set β>1. To decrease the number of false positives, set β<1.
     def convert_to_logits(y_pred):
